@@ -1,6 +1,6 @@
 package org.apache.cassandra.utils;
 
-import java.net.InetAddress;
+import java.net.*;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -56,6 +56,13 @@ public class ShortNodeId {
 
     public static short getId(InetAddress addr)
     {
+	if (addr == null) {
+           try {
+		addr = InetAddress.getLocalHost();
+	   } catch (UnknownHostException e) {
+		e.printStackTrace();
+	   }
+	}	
 	synchronized (addrToId) {
 	    assert addrToId.containsKey(addr) : "addr = " + addr + " not found in " + addrToId;
 	    return addrToId.get(addr).shortValue();
@@ -64,6 +71,13 @@ public class ShortNodeId {
 
     public static byte getDC(InetAddress addr)
     {
+	if (addr == null) {
+           try {
+		addr = InetAddress.getLocalHost();
+	   } catch (UnknownHostException e) {
+		e.printStackTrace();
+	   }
+	}	
 	synchronized (addrToId) {
 	    assert addrToId.containsKey(addr) : "addr = " + addr + " not found in " + addrToId;
 	    return (byte) (addrToId.get(addr).shortValue() >> 12);
@@ -71,8 +85,7 @@ public class ShortNodeId {
     }
 
 
-    public static short getLocalId()
-    {
+    public static short getLocalId() {
         return getId(DatabaseDescriptor.getListenAddress());
     }
 
