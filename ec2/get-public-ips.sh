@@ -1,7 +1,9 @@
 #!/bin/bash
 
-source ec2-utils.sh
+source $(dirname $0)/ec2-utils.sh
 
 for r in $REGIONS; do
-  get_public_ips $r | xargs -n1
+  get_public_ips $r | xargs -n1 &
 done
+
+wait

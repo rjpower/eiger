@@ -1,8 +1,6 @@
 #!/bin/bash
 
-set -x
-
-source ec2-utils.sh
+source $(dirname $0)/ec2-utils.sh
 
 cp conf/cassandra-topology.TEMPLATE conf/cassandra-topology.properties
 DC=1
