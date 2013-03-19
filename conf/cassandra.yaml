@@ -161,7 +161,7 @@ seed_provider:
       parameters:
           # seeds is actually a comma-delimited list of addresses.
           # Ex: "<ip1>,<ip2>,<ip3>"
-          - seeds: 54.235.40.199
+          - seeds: 54.241.225.141
 
 # emergency pressure valve: each time heap usage after a full (CMS)
 # garbage collection is above this fraction of the max, Cassandra will
@@ -245,11 +245,11 @@ ssl_storage_port: 7001
 #
 # Setting this to 0.0.0.0 is always wrong.
 #listen_address: localhost
-listen_address: PRIVATE_ADDRESS
+listen_address:  10.12.133.134
 
 # Address to broadcast to other Cassandra nodes
 # Leaving this blank will set it to the same value as listen_address
-broadcast_address: PUBLIC_ADDRESS
+broadcast_address: 174.129.57.72
 
 # The address to bind the Thrift RPC service to -- clients connect
 # here. Unlike ListenAddress above, you *can* specify 0.0.0.0 here if
