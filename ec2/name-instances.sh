@@ -8,8 +8,10 @@ name=$1
 for r in $REGIONS; do
   (
     untagged=$(get_untagged $r | xargs -n1)
-    echo "Tagging $r $untagged"
-    ec2-create-tags --region=$r --tag Name=$name $untagged
+    echo "Tagging ($untagged) in region $r"
+    if [[ -n $untagged ]]; then
+      ec2-create-tags --region=$r --tag Name=$name $untagged
+    fi
   )&
 done
 

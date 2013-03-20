@@ -1,14 +1,16 @@
 #!/bin/bash
 
-REGIONS="us-east-1 us-west-1"
+REGIONS="us-east-1 us-west-1 ap-southeast-1 eu-west-1"
 
 function get_private_ips() {
   region=$1
+  [[ -n $region ]] || abort "Region not specified"
   ( ec2-describe-instances --region $region | grep INSTANCE | grep running | awk -F'[\t]' '{print $18}') | tee ec2-private-ips.$region
 }
 
 function get_public_ips() {
   region=$1
+  [[ -n $region ]] || abort "Region not specified"
   ( ec2-describe-instances --region $region | grep INSTANCE | grep running | awk -F'[\t]' '{print $17}') | tee ec2-public-ips.$region
 }
 
@@ -30,8 +32,28 @@ function get_name() {
 
 function get_untagged() {
   region=$1
+  [[ -n $region ]] || abort "Region not specified"
   ec2-describe-instances --region=$region | 
     awk '/INSTANCE.*running/ { instances[$2] = 1 } /TAG.*Name/ { delete instances[$3] } END { for (k in instances) { print k } } '
+}
+
+function ami_for_region() {
+  region=$1
+  [[ -n $region ]] || abort "Region not specified"
+  case "$region" in 
+    'us-east-1' ) 
+      echo 'ami-b8d147d1' 
+      ;;
+    'us-west-1' ) 
+      echo 'ami-42b39007' 
+      ;;
+    'eu-west-1' ) 
+      echo 'ami-5a60692e' 
+      ;;
+    'ap-southeast-1' ) 
+      echo 'ami-76206d24'
+      ;;
+  esac
 }
 
 function abort() {
