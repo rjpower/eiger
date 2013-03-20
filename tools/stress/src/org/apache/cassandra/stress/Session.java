@@ -748,26 +748,34 @@ public class Session implements Serializable
         KsDef keyspace = new KsDef();
         String defaultComparator = comparator == null ? DEFAULT_COMPARATOR : comparator;
 
-        // column family for standard columns
-        CfDef standardCfDef = new CfDef("Keyspace1", "Standard1");
-        Map<String, String> compressionOptions = new HashMap<String, String>();
-        if (compression != null)
-            compressionOptions.put("sstable_compression", compression);
+				ArrayList cf_dfns = new ArrayList();
 
-        standardCfDef.setComparator_type(defaultComparator)
-                     .setDefault_validation_class(DEFAULT_VALIDATOR)
-                     .setCompression_options(compressionOptions);
+				Map<String, String> compressionOptions = new HashMap<String, String>();
+				if (compression != null)
+					compressionOptions.put("sstable_compression", compression);
 
-        standardCfDef.setCaching("all");
+        // create 3 standard column family for standard columns
+				for (int i = 1; i <= 3; i++) {
+					CfDef standardCfDef = new CfDef("Keyspace1", "Standard"+i);
+					standardCfDef.setComparator_type(defaultComparator)
+											.setDefault_validation_class(DEFAULT_VALIDATOR)
+											.setCompression_options(compressionOptions);
 
-        standardCfDef.setRead_repair_chance(0);
+					standardCfDef.setCaching("all");
 
-        if (indexType != null)
-        {
-            ColumnDef standardColumn = new ColumnDef(ByteBufferUtil.bytes("C1"), "BytesType");
-            standardColumn.setIndex_type(indexType).setIndex_name("Idx1");
-            standardCfDef.setColumn_metadata(Arrays.asList(standardColumn));
-        }
+					standardCfDef.setRead_repair_chance(0);
+
+					if (indexType != null)
+					{
+							ColumnDef standardColumn = new ColumnDef(ByteBufferUtil.bytes("C1"), "BytesType");
+							standardColumn.setIndex_type(indexType).setIndex_name("Idx1");
+							standardCfDef.setColumn_metadata(Arrays.asList(standardColumn));
+					}
+					if (compactionStrategy != null) {
+            standardCfDef.setCompaction_strategy(compactionStrategy);
+					}
+					cf_dfns.add(standardCfDef);
+				}
 
         // column family with super columns
         CfDef superCfDef = new CfDef("Keyspace1", "Super1").setColumn_type("Super");
@@ -802,13 +810,16 @@ public class Session implements Serializable
 
         if (compactionStrategy != null)
         {
-            standardCfDef.setCompaction_strategy(compactionStrategy);
             superCfDef.setCompaction_strategy(compactionStrategy);
             counterCfDef.setCompaction_strategy(compactionStrategy);
             counterSuperCfDef.setCompaction_strategy(compactionStrategy);
         }
 
-        keyspace.setCf_defs(new ArrayList<CfDef>(Arrays.asList(standardCfDef, superCfDef, counterCfDef, counterSuperCfDef)));
+				cf_dfns.add(superCfDef);
+				cf_dfns.add(counterCfDef);
+				cf_dfns.add(counterSuperCfDef);
+        //keyspace.setCf_defs(new ArrayList<CfDef>(Arrays.asList(standardCfDef, superCfDef, counterCfDef, counterSuperCfDef)));
+        keyspace.setCf_defs(cf_dfns);
 
         Cassandra.Client client = getClient(false);
 
