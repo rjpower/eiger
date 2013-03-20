@@ -25,11 +25,25 @@ import java.util.Random;
 import org.apache.cassandra.client.ClientContext;
 import org.apache.commons.cli.Option;
 
-public final class Stress
-{
-    public static enum Operations
-    {
-        INSERT, READ, RANGE_SLICE, INDEXED_RANGE_SLICE, MULTI_GET, COUNTER_ADD, COUNTER_GET, DYNAMIC, INSERTCL, FACEBOOK, FACEBOOK_POPULATE, WRITE_TXN, BATCH_MUTATE, TWO_ROUND_READ_TXN, DYNAMIC_ONE_SERVER
+public final class Stress {
+    public static enum Operations {
+        INSERT,
+        READ,
+        RANGE_SLICE,
+        INDEXED_RANGE_SLICE,
+        MULTI_GET,
+        COUNTER_ADD,
+        COUNTER_GET,
+        DYNAMIC,
+        INSERTCL,
+        FACEBOOK,
+        FACEBOOK_POPULATE,
+        WRITE_TXN,
+        BATCH_MUTATE,
+        TWO_ROUND_READ_TXN,
+        DYNAMIC_ONE_SERVER,
+        TWITTER_POPULATE,
+        TWITTER_WORKLOAD
     }
 
     public static Session session;
@@ -37,14 +51,10 @@ public final class Stress
 
     private static volatile boolean stopped = false;
 
-    public static void main(String[] arguments) throws Exception
-    {
-        try
-        {
+    public static void main(String[] arguments) throws Exception {
+        try {
             session = new Session(arguments);
-        }
-        catch (IllegalArgumentException e)
-        {
+        } catch (IllegalArgumentException e) {
             e.printStackTrace();
             printHelpMessage();
             return;
@@ -52,12 +62,13 @@ public final class Stress
 
         PrintStream outStream = session.getOutputStream();
 
-        if (session.sendToDaemon != null)
-        {
+        if (session.sendToDaemon != null) {
             Socket socket = new Socket(session.sendToDaemon, 2159);
 
-            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-            BufferedReader inp = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            ObjectOutputStream out = new ObjectOutputStream(
+                    socket.getOutputStream());
+            BufferedReader inp = new BufferedReader(new InputStreamReader(
+                    socket.getInputStream()));
 
             Runtime.getRuntime().addShutdownHook(new ShutDown(socket, out));
 
@@ -65,21 +76,16 @@ public final class Stress
 
             String line;
 
-            try
-            {
-                while (!socket.isClosed() && (line = inp.readLine()) != null)
-                {
-                    if (line.equals("END"))
-                    {
+            try {
+                while (!socket.isClosed() && (line = inp.readLine()) != null) {
+                    if (line.equals("END")) {
                         out.writeInt(1);
                         break;
                     }
 
                     outStream.println(line);
                 }
-            }
-            catch (SocketException e)
-            {
+            } catch (SocketException e) {
                 if (!stopped)
                     e.printStackTrace();
             }
@@ -88,9 +94,7 @@ public final class Stress
             inp.close();
 
             socket.close();
-        }
-        else
-        {
+        } else {
             // For now stress testing will use a single client context, this is
             // probably not what we really want.
             ClientContext clientContext = new ClientContext();
@@ -101,47 +105,41 @@ public final class Stress
     /**
      * Printing out help message
      */
-    public static void printHelpMessage()
-    {
+    public static void printHelpMessage() {
         System.out.println("Usage: ./bin/stress [options]\n\nOptions:");
 
-        for(Object o : Session.availableOptions.getOptions())
-        {
+        for (Object o : Session.availableOptions.getOptions()) {
             Option option = (Option) o;
             String upperCaseName = option.getLongOpt().toUpperCase();
-            System.out.println(String.format("-%s%s, --%s%s%n\t\t%s%n", option.getOpt(), (option.hasArg()) ? " "+upperCaseName : "",
-                                                            option.getLongOpt(), (option.hasArg()) ? "="+upperCaseName : "", option.getDescription()));
+            System.out.println(String.format("-%s%s, --%s%s%n\t\t%s%n", option
+                    .getOpt(), (option.hasArg()) ? " " + upperCaseName : "",
+                    option.getLongOpt(), (option.hasArg()) ? "="
+                            + upperCaseName : "", option.getDescription()));
         }
     }
 
-    private static class ShutDown extends Thread
-    {
+    private static class ShutDown extends Thread {
         private final Socket socket;
         private final ObjectOutputStream out;
 
-        public ShutDown(Socket socket, ObjectOutputStream out)
-        {
+        public ShutDown(Socket socket, ObjectOutputStream out) {
             this.out = out;
             this.socket = socket;
         }
 
         @Override
-        public void run()
-        {
-            try
-            {
-                if (!socket.isClosed())
-                {
-                    System.out.println("Control-C caught. Canceling running action and shutting down...");
+        public void run() {
+            try {
+                if (!socket.isClosed()) {
+                    System.out
+                            .println("Control-C caught. Canceling running action and shutting down...");
 
                     out.writeInt(1);
                     out.close();
 
                     stopped = true;
                 }
-            }
-            catch (IOException e)
-            {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }

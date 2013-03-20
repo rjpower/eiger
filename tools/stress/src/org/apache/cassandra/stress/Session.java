@@ -44,103 +44,194 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
-public class Session implements Serializable
-{
+public class Session implements Serializable {
     // command line options
     public static final Options availableOptions = new Options();
 
     public static final String DEFAULT_COMPARATOR = "AsciiType";
-    public static final String DEFAULT_VALIDATOR  = "BytesType";
+    public static final String DEFAULT_VALIDATOR = "BytesType";
 
     private static InetAddress localInetAddress;
 
     public final AtomicInteger operations;
     public final AtomicInteger keys;
     public final AtomicInteger columnCount;
-    public final AtomicLong    bytes;
-    public final AtomicLong    latency;
+    public final AtomicLong bytes;
+    public final AtomicLong latency;
     public final ConcurrentLinkedQueue<Long> latencies;
 
-    static
-    {
-        availableOptions.addOption("h",  "help",                 false,  "Show this help message and exit");
-        availableOptions.addOption("n",  "num-keys",             true,   "Number of keys, default:1000000");
-        availableOptions.addOption("F",  "num-different-keys",   true,   "Number of different keys (if < NUM-KEYS, the same key will re-used multiple times), default:NUM-KEYS");
-        availableOptions.addOption("N",  "skip-keys",            true,   "Fraction of keys to skip initially, default:0");
-        availableOptions.addOption("t",  "threads",              true,   "Number of threads to use, default:50");
-        availableOptions.addOption("c",  "columns",              true,   "Number of columns per key, default:5");
-        availableOptions.addOption("S",  "column-size",          true,   "Size of column values in bytes, default:34");
-        availableOptions.addOption("C",  "cardinality",          true,   "Number of unique values stored in columns, default:50");
-        availableOptions.addOption("d",  "nodes",                true,   "Host nodes (comma separated), default:locahost");
-        availableOptions.addOption("D",  "nodesfile",            true,   "File containing host nodes (one per line)");
-        availableOptions.addOption("s",  "stdev",                true,   "Standard Deviation Factor, default:0.1");
-        availableOptions.addOption("r",  "random",               false,  "Use random key generator (STDEV will have no effect), default:false");
-        availableOptions.addOption("f",  "file",                 true,   "Write output to given file");
-        availableOptions.addOption("p",  "port",                 true,   "Thrift port, default:9160");
-        availableOptions.addOption("m",  "unframed",             false,  "Use unframed transport, default:false");
-        availableOptions.addOption("o",  "operation",            true,   "Operation to perform (INSERT, READ, RANGE_SLICE, INDEXED_RANGE_SLICE, MULTI_GET, COUNTER_ADD, COUNTER_GET), default:INSERT");
-        availableOptions.addOption("u",  "supercolumns",         true,   "Number of super columns per key, default:1");
-        availableOptions.addOption("y",  "family-type",          true,   "Column Family Type (Super, Standard), default:Standard");
-        availableOptions.addOption("K",  "keep-trying",          true,   "Retry on-going operation N times (in case of failure). positive integer, default:10");
-        availableOptions.addOption("k",  "keep-going",           false,  "Ignore errors inserting or reading (when set, --keep-trying has no effect), default:false");
-        availableOptions.addOption("i",  "progress-interval",    true,   "Progress Report Interval (seconds), default:10");
-        availableOptions.addOption("g",  "keys-per-call",        true,   "Number of keys to get_range_slices or multiget per call, default:1000");
-        availableOptions.addOption("l",  "replication-factor",   true,   "Replication Factor to use when creating needed column families, default:1");
-        availableOptions.addOption("L",  "enable-cql",           false,  "Perform queries using CQL (Cassandra Query Language).");
-        availableOptions.addOption("e",  "consistency-level",    true,   "Consistency Level to use (ONE, QUORUM, LOCAL_QUORUM, EACH_QUORUM, ALL, ANY), default:ONE");
-        availableOptions.addOption("x",  "create-index",         true,   "Type of index to create on needed column families (KEYS)");
-        availableOptions.addOption("R",  "replication-strategy", true,   "Replication strategy to use (only on insert if keyspace does not exist), default:org.apache.cassandra.locator.SimpleStrategy");
-        availableOptions.addOption("O",  "strategy-properties",  true,   "Replication strategy properties in the following format <dc_name>:<num>,<dc_name>:<num>,...");
-        availableOptions.addOption("W",  "no-replicate-on-write",false,  "Set replicate_on_write to false for counters. Only counter add with CL=ONE will work");
-        availableOptions.addOption("V",  "average-size-values",  false,  "Generate column values of average rather than specific size");
-        availableOptions.addOption("T",  "send-to",              true,   "Send this as a request to the stress daemon at specified address.");
-        availableOptions.addOption("I",  "compression",          true,   "Specify the compression to use for sstable, default:no compression");
-        availableOptions.addOption("Q",  "query-names",          true,   "Comma-separated list of column names to retrieve from each row.");
-        availableOptions.addOption("Z",  "compaction-strategy",  true,   "CompactionStrategy to use.");
-        availableOptions.addOption("U",  "comparator",           true,   "Column Comparator to use. Currently supported types are: TimeUUIDType, AsciiType, UTF8Type.");
+    static {
+        availableOptions.addOption("h", "help", false,
+                "Show this help message and exit");
+        availableOptions.addOption("n", "num-keys", true,
+                "Number of keys, default:1000000");
+        availableOptions
+                .addOption(
+                        "F",
+                        "num-different-keys",
+                        true,
+                        "Number of different keys (if < NUM-KEYS, the same key will re-used multiple times), default:NUM-KEYS");
+        availableOptions.addOption("N", "skip-keys", true,
+                "Fraction of keys to skip initially, default:0");
+        availableOptions.addOption("t", "threads", true,
+                "Number of threads to use, default:50");
+        availableOptions.addOption("c", "columns", true,
+                "Number of columns per key, default:5");
+        availableOptions.addOption("S", "column-size", true,
+                "Size of column values in bytes, default:34");
+        availableOptions.addOption("C", "cardinality", true,
+                "Number of unique values stored in columns, default:50");
+        availableOptions.addOption("d", "nodes", true,
+                "Host nodes (comma separated), default:locahost");
+        availableOptions.addOption("D", "nodesfile", true,
+                "File containing host nodes (one per line)");
+        availableOptions.addOption("s", "stdev", true,
+                "Standard Deviation Factor, default:0.1");
+        availableOptions
+                .addOption("r", "random", false,
+                        "Use random key generator (STDEV will have no effect), default:false");
+        availableOptions.addOption("f", "file", true,
+                "Write output to given file");
+        availableOptions.addOption("p", "port", true,
+                "Thrift port, default:9160");
+        availableOptions.addOption("m", "unframed", false,
+                "Use unframed transport, default:false");
+        availableOptions
+                .addOption(
+                        "o",
+                        "operation",
+                        true,
+                        "Operation to perform (INSERT, READ, RANGE_SLICE, INDEXED_RANGE_SLICE, MULTI_GET, COUNTER_ADD, COUNTER_GET), default:INSERT");
+        availableOptions.addOption("u", "supercolumns", true,
+                "Number of super columns per key, default:1");
+        availableOptions.addOption("y", "family-type", true,
+                "Column Family Type (Super, Standard), default:Standard");
+        availableOptions
+                .addOption(
+                        "K",
+                        "keep-trying",
+                        true,
+                        "Retry on-going operation N times (in case of failure). positive integer, default:10");
+        availableOptions
+                .addOption(
+                        "k",
+                        "keep-going",
+                        false,
+                        "Ignore errors inserting or reading (when set, --keep-trying has no effect), default:false");
+        availableOptions.addOption("i", "progress-interval", true,
+                "Progress Report Interval (seconds), default:10");
+        availableOptions
+                .addOption("g", "keys-per-call", true,
+                        "Number of keys to get_range_slices or multiget per call, default:1000");
+        availableOptions
+                .addOption("l", "replication-factor", true,
+                        "Replication Factor to use when creating needed column families, default:1");
+        availableOptions.addOption("L", "enable-cql", false,
+                "Perform queries using CQL (Cassandra Query Language).");
+        availableOptions
+                .addOption(
+                        "e",
+                        "consistency-level",
+                        true,
+                        "Consistency Level to use (ONE, QUORUM, LOCAL_QUORUM, EACH_QUORUM, ALL, ANY), default:ONE");
+        availableOptions.addOption("x", "create-index", true,
+                "Type of index to create on needed column families (KEYS)");
+        availableOptions
+                .addOption(
+                        "R",
+                        "replication-strategy",
+                        true,
+                        "Replication strategy to use (only on insert if keyspace does not exist), default:org.apache.cassandra.locator.SimpleStrategy");
+        availableOptions
+                .addOption(
+                        "O",
+                        "strategy-properties",
+                        true,
+                        "Replication strategy properties in the following format <dc_name>:<num>,<dc_name>:<num>,...");
+        availableOptions
+                .addOption(
+                        "W",
+                        "no-replicate-on-write",
+                        false,
+                        "Set replicate_on_write to false for counters. Only counter add with CL=ONE will work");
+        availableOptions.addOption("V", "average-size-values", false,
+                "Generate column values of average rather than specific size");
+        availableOptions
+                .addOption("T", "send-to", true,
+                        "Send this as a request to the stress daemon at specified address.");
+        availableOptions
+                .addOption("I", "compression", true,
+                        "Specify the compression to use for sstable, default:no compression");
+        availableOptions
+                .addOption("Q", "query-names", true,
+                        "Comma-separated list of column names to retrieve from each row.");
+        availableOptions.addOption("Z", "compaction-strategy", true,
+                "CompactionStrategy to use.");
+        availableOptions
+                .addOption(
+                        "U",
+                        "comparator",
+                        true,
+                        "Column Comparator to use. Currently supported types are: TimeUUIDType, AsciiType, UTF8Type.");
 
-        availableOptions.addOption("A",  "num-dependencies",     true,   "Number of dependencies to attach to each operation.");
+        availableOptions.addOption("A", "num-dependencies", true,
+                "Number of dependencies to attach to each operation.");
 
-        availableOptions.addOption("",  "just-create-keyspace",  false,   "Only create the keyspace and then exit");
+        availableOptions.addOption("", "just-create-keyspace", false,
+                "Only create the keyspace and then exit");
 
-        availableOptions.addOption("",  "stress-index",      true,       "Index of this stress client out of STRESS-COUNT.  Allows for disjoint INSERTS on different servers.");
-        availableOptions.addOption("",  "stress-count",      true,       "Total number of coordinating stress clients");
+        availableOptions
+                .addOption(
+                        "",
+                        "stress-index",
+                        true,
+                        "Index of this stress client out of STRESS-COUNT.  Allows for disjoint INSERTS on different servers.");
+        availableOptions.addOption("", "stress-count", true,
+                "Total number of coordinating stress clients");
 
-        availableOptions.addOption("",  "write-fraction",             true,   "Fraction of ops to be writes, 0-1");
-        availableOptions.addOption("",  "columns-per-key-read",       true,   "");
-        availableOptions.addOption("",  "columns-per-key-write",      true,   "");
-        availableOptions.addOption("",  "keys-per-read",              true,   "");
-        availableOptions.addOption("",  "keys-per-write",             true,   "");
-        availableOptions.addOption("",  "write-transaction-fraction", true,   "Fraction of ops to be transactions, 0-1");
+        availableOptions.addOption("", "write-fraction", true,
+                "Fraction of ops to be writes, 0-1");
+        availableOptions.addOption("", "columns-per-key-read", true, "");
+        availableOptions.addOption("", "columns-per-key-write", true, "");
+        availableOptions.addOption("", "keys-per-read", true, "");
+        availableOptions.addOption("", "keys-per-write", true, "");
+        availableOptions.addOption("", "write-transaction-fraction", true,
+                "Fraction of ops to be transactions, 0-1");
 
-        availableOptions.addOption("",  "num-servers",             true,   "The number of servers in each cluster, required for write-txn workload");
-        availableOptions.addOption("",  "keys-per-server",         true,   "The number of keys to write on each server in a write txn");
-        availableOptions.addOption("",  "servers-per-txn",         true,   "The number of servers to include in each write txn");
+        availableOptions
+                .addOption("", "num-servers", true,
+                        "The number of servers in each cluster, required for write-txn workload");
+        availableOptions.addOption("", "keys-per-server", true,
+                "The number of keys to write on each server in a write txn");
+        availableOptions.addOption("", "servers-per-txn", true,
+                "The number of servers to include in each write txn");
 
-        availableOptions.addOption("",  "server-index",         true,   "Index of the server (out of num-servers) to load for DYNAMIC_ONE_SERVER");
+        availableOptions
+                .addOption("", "server-index", true,
+                        "Index of the server (out of num-servers) to load for DYNAMIC_ONE_SERVER");
     }
 
-    private int numKeys          = 1000 * 1000;
+    private int numKeys = 1000 * 1000;
     private int numDifferentKeys = numKeys;
-    private float skipKeys       = 0;
-    private int threads          = 50;
-    private int columns          = 5;
-    private int columnSize       = 34;
-    private int cardinality      = 50;
-    private String[] nodes       = new String[] { "127.0.0.1" };
-    private boolean random       = false;
-    private boolean unframed     = false;
-    private int retryTimes       = 10;
-    private int port             = 9160;
-    private int superColumns     = 1;
-    private String compression   = null;
+    private float skipKeys = 0;
+    private int threads = 50;
+    private int columns = 5;
+    private int columnSize = 34;
+    private int cardinality = 50;
+    private String[] nodes = new String[] { "127.0.0.1" };
+    private boolean random = false;
+    private boolean unframed = false;
+    private int retryTimes = 10;
+    private int port = 9160;
+    private int superColumns = 1;
+    private String compression = null;
     private String compactionStrategy = null;
 
-    private int progressInterval  = 10;
-    private int keysPerCall       = 1000;
+    private int progressInterval = 10;
+    private int keysPerCall = 1000;
     private boolean replicateOnWrite = true;
-    private boolean ignoreErrors  = false;
-    private boolean enable_cql    = false;
+    private boolean ignoreErrors = false;
+    private boolean enable_cql = false;
 
     private final String outFileName;
 
@@ -157,14 +248,14 @@ public class Session implements Serializable
     public final boolean averageSizeValues;
 
     // required by Gaussian distribution.
-    protected int   mean;
+    protected int mean;
     protected float sigma;
 
     public final InetAddress sendToDaemon;
     public final String comparator;
     public final boolean timeUUIDComparator;
 
-    //COPS specific microbenchmarking options
+    // COPS specific microbenchmarking options
     private int numDependencies = 0;
     private final Set<Dep> pregeneratedDependencies = new HashSet<Dep>();
 
@@ -174,17 +265,32 @@ public class Session implements Serializable
 
     private boolean justCreateKeyspace = false;
 
-    //COPS dynamic workload generator options
-    Map<String, Integer> localServerIPAndPorts = new HashMap<String, Integer>(); //we'll piggyback this off hosts and just use that and assume 9160 for the port
+    // COPS dynamic workload generator options
+    Map<String, Integer> localServerIPAndPorts = new HashMap<String, Integer>(); // we'll
+                                                                                 // piggyback
+                                                                                 // this
+                                                                                 // off
+                                                                                 // hosts
+                                                                                 // and
+                                                                                 // just
+                                                                                 // use
+                                                                                 // that
+                                                                                 // and
+                                                                                 // assume
+                                                                                 // 9160
+                                                                                 // for
+                                                                                 // the
+                                                                                 // port
     private double write_fraction = -1;
-    //value size already an option
+    // value size already an option
     private int columns_per_key_read = 0;
     private int columns_per_key_write = 0;
     private int keys_per_read = 0;
     private int keys_per_write = 0;
     private double write_transaction_fraction = -1;
 
-    // for write txn experiment where we want to control the exact number of keys being accessed on each server
+    // for write txn experiment where we want to control the exact number of
+    // keys being accessed on each server
     private int num_servers = 0;
     private int keys_per_server = 0;
     private int servers_per_txn = 0;
@@ -192,19 +298,17 @@ public class Session implements Serializable
     private int server_index = -1;
     private static ArrayList<ArrayList<ByteBuffer>> generatedKeysByServer;
 
-
-    public Session(String[] arguments) throws IllegalArgumentException
-    {
+    public Session(String[] arguments) throws IllegalArgumentException {
         float STDev = 0.1f;
         CommandLineParser parser = new PosixParser();
 
-        try
-        {
+        try {
             CommandLine cmd = parser.parse(availableOptions, arguments);
 
-            if (cmd.getArgs().length > 0)
-            {
-                System.err.println("Application does not allow arbitrary arguments: " + StringUtils.join(cmd.getArgList(), ", "));
+            if (cmd.getArgs().length > 0) {
+                System.err
+                        .println("Application does not allow arbitrary arguments: "
+                                + StringUtils.join(cmd.getArgList(), ", "));
                 System.exit(1);
             }
 
@@ -237,23 +341,20 @@ public class Session implements Serializable
             if (cmd.hasOption("d"))
                 nodes = cmd.getOptionValue("d").split(",");
 
-            if (cmd.hasOption("D"))
-            {
-                try
-                {
+            if (cmd.hasOption("D")) {
+                try {
                     String node = null;
                     List<String> tmpNodes = new ArrayList<String>();
-                    BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(cmd.getOptionValue("D"))));
-                    while ((node = in.readLine()) != null)
-                    {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(new FileInputStream(
+                                    cmd.getOptionValue("D"))));
+                    while ((node = in.readLine()) != null) {
                         if (node.length() > 0)
                             tmpNodes.add(node);
                     }
                     nodes = tmpNodes.toArray(new String[tmpNodes.size()]);
                     in.close();
-                }
-                catch(IOException ioe)
-                {
+                } catch (IOException ioe) {
                     throw new RuntimeException(ioe);
                 }
             }
@@ -273,30 +374,29 @@ public class Session implements Serializable
                 unframed = Boolean.parseBoolean(cmd.getOptionValue("m"));
 
             if (cmd.hasOption("o"))
-                operation = Stress.Operations.valueOf(cmd.getOptionValue("o").toUpperCase());
+                operation = Stress.Operations.valueOf(cmd.getOptionValue("o")
+                        .toUpperCase());
 
             if (cmd.hasOption("u"))
                 superColumns = Integer.parseInt(cmd.getOptionValue("u"));
 
             if (cmd.hasOption("y"))
-                columnFamilyType = ColumnFamilyType.valueOf(cmd.getOptionValue("y"));
+                columnFamilyType = ColumnFamilyType.valueOf(cmd
+                        .getOptionValue("y"));
 
-            if (cmd.hasOption("K"))
-            {
+            if (cmd.hasOption("K")) {
                 retryTimes = Integer.valueOf(cmd.getOptionValue("K"));
 
-                if (retryTimes <= 0)
-                {
-                    throw new RuntimeException("--keep-trying option value should be > 0");
+                if (retryTimes <= 0) {
+                    throw new RuntimeException(
+                            "--keep-trying option value should be > 0");
                 }
             }
 
-            if (cmd.hasOption("k"))
-            {
+            if (cmd.hasOption("k")) {
                 retryTimes = 1;
                 ignoreErrors = true;
             }
-
 
             if (cmd.hasOption("i"))
                 progressInterval = Integer.parseInt(cmd.getOptionValue("i"));
@@ -305,34 +405,38 @@ public class Session implements Serializable
                 keysPerCall = Integer.parseInt(cmd.getOptionValue("g"));
 
             if (cmd.hasOption("e"))
-                consistencyLevel = ConsistencyLevel.valueOf(cmd.getOptionValue("e").toUpperCase());
+                consistencyLevel = ConsistencyLevel.valueOf(cmd.getOptionValue(
+                        "e").toUpperCase());
 
             if (cmd.hasOption("x"))
-                indexType = IndexType.valueOf(cmd.getOptionValue("x").toUpperCase());
+                indexType = IndexType.valueOf(cmd.getOptionValue("x")
+                        .toUpperCase());
 
             if (cmd.hasOption("R"))
                 replicationStrategy = cmd.getOptionValue("R");
 
             if (cmd.hasOption("l"))
-                replicationStrategyOptions.put("replication_factor", String.valueOf(Integer.parseInt(cmd.getOptionValue("l"))));
+                replicationStrategyOptions.put("replication_factor", String
+                        .valueOf(Integer.parseInt(cmd.getOptionValue("l"))));
             else if (replicationStrategy.endsWith("SimpleStrategy"))
                 replicationStrategyOptions.put("replication_factor", "1");
 
             if (cmd.hasOption("L"))
                 enable_cql = true;
 
-            if (cmd.hasOption("O"))
-            {
-                String[] pairs = StringUtils.split(cmd.getOptionValue("O"), ',');
+            if (cmd.hasOption("O")) {
+                String[] pairs = StringUtils
+                        .split(cmd.getOptionValue("O"), ',');
 
-                for (String pair : pairs)
-                {
+                for (String pair : pairs) {
                     String[] keyAndValue = StringUtils.split(pair, ':');
 
                     if (keyAndValue.length != 2)
-                        throw new RuntimeException("Invalid --strategy-properties value.");
+                        throw new RuntimeException(
+                                "Invalid --strategy-properties value.");
 
-                    replicationStrategyOptions.put(keyAndValue[0], keyAndValue[1]);
+                    replicationStrategyOptions.put(keyAndValue[0],
+                            keyAndValue[1]);
                 }
             }
 
@@ -344,58 +448,44 @@ public class Session implements Serializable
 
             averageSizeValues = cmd.hasOption("V");
 
-            try
-            {
-                sendToDaemon = cmd.hasOption("send-to")
-                                ? InetAddress.getByName(cmd.getOptionValue("send-to"))
-                                : null;
-            }
-            catch (UnknownHostException e)
-            {
+            try {
+                sendToDaemon = cmd.hasOption("send-to") ? InetAddress
+                        .getByName(cmd.getOptionValue("send-to")) : null;
+            } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
 
-            if (cmd.hasOption("Q"))
-            {
+            if (cmd.hasOption("Q")) {
                 AbstractType comparator = TypeParser.parse(DEFAULT_COMPARATOR);
 
-                String[] names = StringUtils.split(cmd.getOptionValue("Q"), ",");
+                String[] names = StringUtils
+                        .split(cmd.getOptionValue("Q"), ",");
                 columnNames = new ArrayList<ByteBuffer>(names.length);
 
                 for (String columnName : names)
                     columnNames.add(comparator.fromString(columnName));
-            }
-            else
-            {
+            } else {
                 columnNames = null;
             }
 
-            if (cmd.hasOption("Z"))
-            {
+            if (cmd.hasOption("Z")) {
                 compactionStrategy = cmd.getOptionValue("Z");
 
-                try
-                {
+                try {
                     // validate compaction strategy class
                     CFMetaData.createCompactionStrategy(compactionStrategy);
-                }
-                catch (ConfigurationException e)
-                {
+                } catch (ConfigurationException e) {
                     System.err.println(e.getMessage());
                     System.exit(1);
                 }
             }
 
-            if (cmd.hasOption("U"))
-            {
+            if (cmd.hasOption("U")) {
                 AbstractType parsed = null;
 
-                try
-                {
+                try {
                     parsed = TypeParser.parse(cmd.getOptionValue("U"));
-                }
-                catch (ConfigurationException e)
-                {
+                } catch (ConfigurationException e) {
                     System.err.println(e.getMessage());
                     System.exit(1);
                 }
@@ -403,37 +493,40 @@ public class Session implements Serializable
                 comparator = cmd.getOptionValue("U");
                 timeUUIDComparator = parsed instanceof TimeUUIDType;
 
-                if (!(parsed instanceof TimeUUIDType || parsed instanceof AsciiType || parsed instanceof UTF8Type))
-                {
-                    System.err.println("Currently supported types are: TimeUUIDType, AsciiType, UTF8Type.");
+                if (!(parsed instanceof TimeUUIDType
+                        || parsed instanceof AsciiType || parsed instanceof UTF8Type)) {
+                    System.err
+                            .println("Currently supported types are: TimeUUIDType, AsciiType, UTF8Type.");
                     System.exit(1);
                 }
-            }
-            else
-            {
+            } else {
                 comparator = null;
                 timeUUIDComparator = false;
             }
 
-            //num-dependencies
-            if (cmd.hasOption("A"))
-            {
+            // num-dependencies
+            if (cmd.hasOption("A")) {
                 numDependencies = Integer.parseInt(cmd.getOptionValue("A"));
                 for (int i = 0; i < numDependencies; ++i) {
-                    //we'll just include dummy dependencies, this is for microbenchmarks so they shouldn't be checked
-                    ByteBuffer locator_key = ByteBufferUtil.bytes(String.valueOf(i));
+                    // we'll just include dummy dependencies, this is for
+                    // microbenchmarks so they shouldn't be checked
+                    ByteBuffer locator_key = ByteBufferUtil.bytes(String
+                            .valueOf(i));
                     long timestamp = i;
-                    pregeneratedDependencies.add(new Dep(locator_key, timestamp));
+                    pregeneratedDependencies
+                            .add(new Dep(locator_key, timestamp));
                 }
             }
 
             if (cmd.hasOption("stress-index")) {
-                stressIndex = Integer.parseInt(cmd.getOptionValue("stress-index"));
+                stressIndex = Integer.parseInt(cmd
+                        .getOptionValue("stress-index"));
                 if (stressIndex < 0)
                     throw new RuntimeException("Invalid --stress-index value");
             }
             if (cmd.hasOption("stress-count")) {
-                stressCount = Integer.parseInt(cmd.getOptionValue("stress-count"));
+                stressCount = Integer.parseInt(cmd
+                        .getOptionValue("stress-count"));
                 if (stressCount <= 0)
                     throw new RuntimeException("Invalid --stress-count value");
             }
@@ -443,86 +536,104 @@ public class Session implements Serializable
             }
 
             if (cmd.hasOption("write-fraction")) {
-                write_fraction = Double.parseDouble(cmd.getOptionValue("write-fraction"));
+                write_fraction = Double.parseDouble(cmd
+                        .getOptionValue("write-fraction"));
                 if (write_fraction < 0 || write_fraction > 1)
                     throw new RuntimeException("Invalid --write-fraction value");
             }
             if (cmd.hasOption("columns-per-key-read")) {
-                columns_per_key_read = Integer.parseInt(cmd.getOptionValue("columns-per-key-read"));
+                columns_per_key_read = Integer.parseInt(cmd
+                        .getOptionValue("columns-per-key-read"));
                 if (columns_per_key_read <= 0)
-                    throw new RuntimeException("Invalid columns-per-key-read value");
+                    throw new RuntimeException(
+                            "Invalid columns-per-key-read value");
             }
             if (cmd.hasOption("columns-per-key-write")) {
-                columns_per_key_write = Integer.parseInt(cmd.getOptionValue("columns-per-key-write"));
+                columns_per_key_write = Integer.parseInt(cmd
+                        .getOptionValue("columns-per-key-write"));
                 if (columns_per_key_write <= 0)
-                    throw new RuntimeException("Invalid columns-per-key-write value");
+                    throw new RuntimeException(
+                            "Invalid columns-per-key-write value");
             }
             if (cmd.hasOption("keys-per-read")) {
-                keys_per_read = Integer.parseInt(cmd.getOptionValue("keys-per-read"));
+                keys_per_read = Integer.parseInt(cmd
+                        .getOptionValue("keys-per-read"));
                 if (keys_per_read <= 0)
                     throw new RuntimeException("Invalid keys-per-read value");
             }
             if (cmd.hasOption("keys-per-write")) {
-                keys_per_write = Integer.parseInt(cmd.getOptionValue("keys-per-write"));
+                keys_per_write = Integer.parseInt(cmd
+                        .getOptionValue("keys-per-write"));
                 if (keys_per_write <= 0)
                     throw new RuntimeException("Invalid keys-per-write value");
             }
             if (cmd.hasOption("write-transaction-fraction")) {
-                write_transaction_fraction = Double.parseDouble(cmd.getOptionValue("write-transaction-fraction"));
-                if (write_transaction_fraction < 0 || write_transaction_fraction > 1)
-                    throw new RuntimeException("Invalid --write-transaction-fraction value");
+                write_transaction_fraction = Double.parseDouble(cmd
+                        .getOptionValue("write-transaction-fraction"));
+                if (write_transaction_fraction < 0
+                        || write_transaction_fraction > 1)
+                    throw new RuntimeException(
+                            "Invalid --write-transaction-fraction value");
             }
 
             if (cmd.hasOption("num-servers")) {
-                num_servers = Integer.parseInt(cmd.getOptionValue("num-servers"));
+                num_servers = Integer.parseInt(cmd
+                        .getOptionValue("num-servers"));
                 if (num_servers <= 0)
                     throw new RuntimeException("Invalid num-servers value");
             }
             if (cmd.hasOption("keys-per-server")) {
-                keys_per_server = Integer.parseInt(cmd.getOptionValue("keys-per-server"));
+                keys_per_server = Integer.parseInt(cmd
+                        .getOptionValue("keys-per-server"));
                 if (keys_per_server <= 0)
                     throw new RuntimeException("Invalid key-per-server value");
             }
             if (cmd.hasOption("servers-per-txn")) {
-                servers_per_txn = Integer.parseInt(cmd.getOptionValue("servers-per-txn"));
+                servers_per_txn = Integer.parseInt(cmd
+                        .getOptionValue("servers-per-txn"));
                 if (servers_per_txn <= 0)
                     throw new RuntimeException("Invalid servers-per-txn value");
             }
             if (cmd.hasOption("server-index")) {
-                server_index = Integer.parseInt(cmd.getOptionValue("server-index"));
+                server_index = Integer.parseInt(cmd
+                        .getOptionValue("server-index"));
                 if (server_index < 0)
                     throw new RuntimeException("Invalid server-index value");
             }
-        }
-        catch (ParseException e)
-        {
+        } catch (ParseException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
-        }
-        catch (ConfigurationException e)
-        {
+        } catch (ConfigurationException e) {
             throw new IllegalStateException(e.getMessage(), e);
         }
 
-        if (operation == Stress.Operations.DYNAMIC || operation == Stress.Operations.DYNAMIC_ONE_SERVER) {
-            //Must set all dynamic workload parameters or none
-            if (! (write_fraction >= 0 && columns_per_key_read != 0 && columns_per_key_write != 0
-                    && keys_per_read != 0 && keys_per_write != 0 && write_transaction_fraction >= 0
-                    && columnSize != 34)) {
+        if (operation == Stress.Operations.DYNAMIC
+                || operation == Stress.Operations.DYNAMIC_ONE_SERVER) {
+            // Must set all dynamic workload parameters or none
+            if (!(write_fraction >= 0 && columns_per_key_read != 0
+                    && columns_per_key_write != 0 && keys_per_read != 0
+                    && keys_per_write != 0 && write_transaction_fraction >= 0 && columnSize != 34)) {
                 throw new RuntimeException("All dynamic options must be set");
             }
 
             if (operation == Stress.Operations.DYNAMIC_ONE_SERVER) {
                 if (num_servers == 0 || server_index == -1) {
-                    throw new RuntimeException("Dynamic One Server requires num-servers, and server-index");
+                    throw new RuntimeException(
+                            "Dynamic One Server requires num-servers, and server-index");
                 }
-                //DYNAMIC_ONE_SERVER should get a numDifferentKeys==totalKeys written in the system, just like normal dynamic...
-                dynamicOneServerGenerateKeysForEachServer(num_servers, numDifferentKeys);
+                // DYNAMIC_ONE_SERVER should get a numDifferentKeys==totalKeys
+                // written in the system, just like normal dynamic...
+                dynamicOneServerGenerateKeysForEachServer(num_servers,
+                        numDifferentKeys);
             }
         }
 
-        if (operation == Stress.Operations.WRITE_TXN || operation == Stress.Operations.BATCH_MUTATE) {
-            if (num_servers == 0 || keys_per_server == 0 || servers_per_txn == 0 || numKeys == 0 || columns_per_key_write == 0) {
-                throw new RuntimeException("Write txn required num-servers, keys-per-server, servers-per-txn, columns-per-key-write, num-keys, and num-different-keys options");
+        if (operation == Stress.Operations.WRITE_TXN
+                || operation == Stress.Operations.BATCH_MUTATE) {
+            if (num_servers == 0 || keys_per_server == 0
+                    || servers_per_txn == 0 || numKeys == 0
+                    || columns_per_key_write == 0) {
+                throw new RuntimeException(
+                        "Write txn required num-servers, keys-per-server, servers-per-txn, columns-per-key-write, num-keys, and num-different-keys options");
             }
             assert servers_per_txn <= num_servers;
             generateKeysForEachServer(num_servers, numDifferentKeys);
@@ -537,8 +648,7 @@ public class Session implements Serializable
             System.exit(0);
         }
 
-
-        mean  = numDifferentKeys / 2;
+        mean = numDifferentKeys / 2;
         sigma = numDifferentKeys * STDev;
 
         operations = new AtomicInteger();
@@ -549,193 +659,155 @@ public class Session implements Serializable
         latencies = new ConcurrentLinkedQueue<Long>();
     }
 
-    public int getCardinality()
-    {
+    public int getCardinality() {
         return cardinality;
     }
 
-    public int getColumnSize()
-    {
+    public int getColumnSize() {
         return columnSize;
     }
 
-    public boolean isUnframed()
-    {
+    public boolean isUnframed() {
         return unframed;
     }
 
-    public int getColumnsPerKey()
-    {
+    public int getColumnsPerKey() {
         return columns;
     }
 
-    public ColumnFamilyType getColumnFamilyType()
-    {
+    public ColumnFamilyType getColumnFamilyType() {
         return columnFamilyType;
     }
 
-    public int getNumKeys()
-    {
+    public int getNumKeys() {
         return numKeys;
     }
 
-    public int getNumDifferentKeys()
-    {
+    public int getNumDifferentKeys() {
         return numDifferentKeys;
     }
 
-    public int getKeysOffset()
-    {
-        return numDifferentKeys*stressIndex;
+    public int getKeysOffset() {
+        return numDifferentKeys * stressIndex;
     }
 
-    public int getThreads()
-    {
+    public int getThreads() {
         return threads;
     }
 
-    public float getSkipKeys()
-    {
+    public float getSkipKeys() {
         return skipKeys;
     }
 
-    public int getSuperColumns()
-    {
+    public int getSuperColumns() {
         return superColumns;
     }
 
-    public int getKeysPerThread()
-    {
+    public int getKeysPerThread() {
         return numKeys / threads;
     }
 
-    public int getTotalKeysLength()
-    {
-        //return Integer.toString(numDifferentKeys*stressCount).length();
-	return 10;
+    public int getTotalKeysLength() {
+        // return Integer.toString(numDifferentKeys*stressCount).length();
+        return 10;
     }
 
-    public int getNumTotalKeys()
-    {
-        return numDifferentKeys*stressCount;
+    public int getNumTotalKeys() {
+        return numDifferentKeys * stressCount;
     }
 
-    public ConsistencyLevel getConsistencyLevel()
-    {
+    public ConsistencyLevel getConsistencyLevel() {
         return consistencyLevel;
     }
 
-    public int getRetryTimes()
-    {
+    public int getRetryTimes() {
         return retryTimes;
     }
 
-    public boolean ignoreErrors()
-    {
+    public boolean ignoreErrors() {
         return ignoreErrors;
     }
 
-    public Stress.Operations getOperation()
-    {
+    public Stress.Operations getOperation() {
         return operation;
     }
 
-    public PrintStream getOutputStream()
-    {
-        try
-        {
-            return (outFileName == null) ? System.out : new PrintStream(new FileOutputStream(outFileName));
-        }
-        catch (FileNotFoundException e)
-        {
+    public PrintStream getOutputStream() {
+        try {
+            return (outFileName == null) ? System.out : new PrintStream(
+                    new FileOutputStream(outFileName));
+        } catch (FileNotFoundException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
     }
 
-    public int getProgressInterval()
-    {
+    public int getProgressInterval() {
         return progressInterval;
     }
 
-    public boolean useRandomGenerator()
-    {
+    public boolean useRandomGenerator() {
         return random;
     }
 
-    public int getKeysPerCall()
-    {
+    public int getKeysPerCall() {
         return keysPerCall;
     }
 
     // required by Gaussian distribution
-    public int getMean()
-    {
+    public int getMean() {
         return mean;
     }
 
     // required by Gaussian distribution
-    public float getSigma()
-    {
+    public float getSigma() {
         return sigma;
     }
 
-    public boolean isCQL()
-    {
+    public boolean isCQL() {
         return enable_cql;
     }
 
-    public Set<Dep> getPregeneratedDependencies()
-    {
+    public Set<Dep> getPregeneratedDependencies() {
         return pregeneratedDependencies;
     }
 
-    public double getWrite_fraction()
-    {
+    public double getWrite_fraction() {
         return write_fraction;
     }
 
-    public int getColumns_per_key_read()
-    {
+    public int getColumns_per_key_read() {
         return columns_per_key_read;
     }
 
-    public int getColumns_per_key_write()
-    {
+    public int getColumns_per_key_write() {
         return columns_per_key_write;
     }
 
-    public int getKeys_per_read()
-    {
+    public int getKeys_per_read() {
         return keys_per_read;
     }
 
-    public int getKeys_per_write()
-    {
+    public int getKeys_per_write() {
         return keys_per_write;
     }
 
-    public double getWrite_transaction_fraction()
-    {
+    public double getWrite_transaction_fraction() {
         return write_transaction_fraction;
     }
 
-    public int getNum_servers()
-    {
+    public int getNum_servers() {
         return num_servers;
     }
 
-    public int getKeys_per_server()
-    {
+    public int getKeys_per_server() {
         return keys_per_server;
     }
 
-    public int getServers_per_txn()
-    {
+    public int getServers_per_txn() {
         return servers_per_txn;
     }
 
-    public int getServerIndex()
-    {
+    public int getServerIndex() {
         assert server_index != -1;
         return server_index;
     }
@@ -743,132 +815,131 @@ public class Session implements Serializable
     /**
      * Create Keyspace1 with Standard1 and Super1 column families
      */
-    public void createKeySpaces()
-    {
+    public void createKeySpaces() {
         KsDef keyspace = new KsDef();
-        String defaultComparator = comparator == null ? DEFAULT_COMPARATOR : comparator;
+        String defaultComparator = comparator == null ? DEFAULT_COMPARATOR
+                : comparator;
 
-				ArrayList cf_dfns = new ArrayList();
+        ArrayList cf_dfns = new ArrayList();
 
-				Map<String, String> compressionOptions = new HashMap<String, String>();
-				if (compression != null)
-					compressionOptions.put("sstable_compression", compression);
+        Map<String, String> compressionOptions = new HashMap<String, String>();
+        if (compression != null)
+            compressionOptions.put("sstable_compression", compression);
 
-        // create 3 standard column family for standard columns
-				for (int i = 1; i <= 3; i++) {
-					CfDef standardCfDef = new CfDef("Keyspace1", "Standard"+i);
-					standardCfDef.setComparator_type(defaultComparator)
-											.setDefault_validation_class(DEFAULT_VALIDATOR)
-											.setCompression_options(compressionOptions);
+        String[] names = new String[] { "Standard1", "Followers", "Timeline",
+                "Tweets" };
 
-					standardCfDef.setCaching("all");
+        for (String name : names) {
+            CfDef standardCfDef = new CfDef("Keyspace1", name);
+            standardCfDef.setComparator_type(defaultComparator)
+                    .setDefault_validation_class(DEFAULT_VALIDATOR)
+                    .setCompression_options(compressionOptions);
 
-					standardCfDef.setRead_repair_chance(0);
+            standardCfDef.setCaching("all");
 
-					if (indexType != null)
-					{
-							ColumnDef standardColumn = new ColumnDef(ByteBufferUtil.bytes("C1"), "BytesType");
-							standardColumn.setIndex_type(indexType).setIndex_name("Idx1");
-							standardCfDef.setColumn_metadata(Arrays.asList(standardColumn));
-					}
-					if (compactionStrategy != null) {
-            standardCfDef.setCompaction_strategy(compactionStrategy);
-					}
-					cf_dfns.add(standardCfDef);
-				}
+            standardCfDef.setRead_repair_chance(0);
+
+            if (indexType != null) {
+                ColumnDef standardColumn = new ColumnDef(
+                        ByteBufferUtil.bytes("C1"), "BytesType");
+                standardColumn.setIndex_type(indexType).setIndex_name("Idx1");
+                standardCfDef.setColumn_metadata(Arrays.asList(standardColumn));
+            }
+            if (compactionStrategy != null) {
+                standardCfDef.setCompaction_strategy(compactionStrategy);
+            }
+            cf_dfns.add(standardCfDef);
+        }
 
         // column family with super columns
-        CfDef superCfDef = new CfDef("Keyspace1", "Super1").setColumn_type("Super");
+        CfDef superCfDef = new CfDef("Keyspace1", "Super1")
+                .setColumn_type("Super");
         superCfDef.setComparator_type(DEFAULT_COMPARATOR)
-                  .setSubcomparator_type(defaultComparator)
-                  .setDefault_validation_class(DEFAULT_VALIDATOR)
-                  .setCompression_options(compressionOptions)
-                  .setRead_repair_chance(0);
+                .setSubcomparator_type(defaultComparator)
+                .setDefault_validation_class(DEFAULT_VALIDATOR)
+                .setCompression_options(compressionOptions)
+                .setRead_repair_chance(0);
 
         // column family for standard counters
         CfDef counterCfDef = new CfDef("Keyspace1", "Counter1");
         counterCfDef.setDefault_validation_class("CounterColumnType")
-                    .setReplicate_on_write(replicateOnWrite)
-                    .setCompression_options(compressionOptions)
-                    .setRead_repair_chance(0);
+                .setReplicate_on_write(replicateOnWrite)
+                .setCompression_options(compressionOptions)
+                .setRead_repair_chance(0);
 
         // column family with counter super columns
         CfDef counterSuperCfDef = new CfDef("Keyspace1", "SuperCounter1");
         counterSuperCfDef.setDefault_validation_class("CounterColumnType")
-                         .setReplicate_on_write(replicateOnWrite)
-                         .setColumn_type("Super")
-                         .setCompression_options(compressionOptions)
-                         .setRead_repair_chance(0);
+                .setReplicate_on_write(replicateOnWrite)
+                .setColumn_type("Super")
+                .setCompression_options(compressionOptions)
+                .setRead_repair_chance(0);
 
         keyspace.setName("Keyspace1");
         keyspace.setStrategy_class(replicationStrategy);
 
-        if (!replicationStrategyOptions.isEmpty())
-        {
+        if (!replicationStrategyOptions.isEmpty()) {
             keyspace.setStrategy_options(replicationStrategyOptions);
         }
 
-        if (compactionStrategy != null)
-        {
+        if (compactionStrategy != null) {
             superCfDef.setCompaction_strategy(compactionStrategy);
             counterCfDef.setCompaction_strategy(compactionStrategy);
             counterSuperCfDef.setCompaction_strategy(compactionStrategy);
         }
 
-				cf_dfns.add(superCfDef);
-				cf_dfns.add(counterCfDef);
-				cf_dfns.add(counterSuperCfDef);
-        //keyspace.setCf_defs(new ArrayList<CfDef>(Arrays.asList(standardCfDef, superCfDef, counterCfDef, counterSuperCfDef)));
+        cf_dfns.add(superCfDef);
+        cf_dfns.add(counterCfDef);
+        cf_dfns.add(counterSuperCfDef);
+        // keyspace.setCf_defs(new ArrayList<CfDef>(Arrays.asList(standardCfDef,
+        // superCfDef, counterCfDef, counterSuperCfDef)));
         keyspace.setCf_defs(cf_dfns);
 
         Cassandra.Client client = getClient(false);
 
-        try
-        {
+        try {
             client.system_add_keyspace(keyspace);
-	    int sleepTime = 5;
-            System.out.println(String.format("Created keyspaces. Sleeping %ss for propagation.", sleepTime));
+            int sleepTime = 5;
+            System.out.println(String.format(
+                    "Created keyspaces. Sleeping %ss for propagation.",
+                    sleepTime));
             Thread.sleep(sleepTime * 1000); // seconds
-        }
-        catch (InvalidRequestException e)
-        {
-            System.err.println("Unable to create stress keyspace: " + e.getWhy());
-        }
-        catch (Exception e)
-        {
+        } catch (InvalidRequestException e) {
+            System.err.println("Unable to create stress keyspace: "
+                    + e.getWhy());
+        } catch (Exception e) {
             System.err.println(e.getMessage());
         }
     }
 
-    public ClientLibrary getClientLibrary()
-    {
-	// Allow use of client library with other consistency levels for micro-benchmarks
-        //if (this.getConsistencyLevel() != ConsistencyLevel.LOCAL_QUORUM) {
-        //    throw new RuntimeException("Session.getClientLibrary is only meant for use with consistency level LOCAL_QUORUM");
-        //}
+    public ClientLibrary getClientLibrary() {
+        // Allow use of client library with other consistency levels for
+        // micro-benchmarks
+        // if (this.getConsistencyLevel() != ConsistencyLevel.LOCAL_QUORUM) {
+        // throw new
+        // RuntimeException("Session.getClientLibrary is only meant for use with consistency level LOCAL_QUORUM");
+        // }
 
         try {
-            return new ClientLibrary(localServerIPAndPorts, "Keyspace1", this.getConsistencyLevel());
+            return new ClientLibrary(localServerIPAndPorts, "Keyspace1",
+                    this.getConsistencyLevel());
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e.getMessage());
         }
     }
 
-
-    public ByteBuffer getRandGeneratedKey(int serverNum)
-    {
+    public ByteBuffer getRandGeneratedKey(int serverNum) {
         int serverKeyCount = generatedKeysByServer.get(serverNum).size();
-        return generatedKeysByServer.get(serverNum).get(Stress.randomizer.nextInt(serverKeyCount));
+        return generatedKeysByServer.get(serverNum).get(
+                Stress.randomizer.nextInt(serverKeyCount));
     }
 
-    private void generateKeysForEachServer(int numServers, int totalNumKeys)
-    {
-        int keysPerServer = totalNumKeys/numServers;
+    private void generateKeysForEachServer(int numServers, int totalNumKeys) {
+        int keysPerServer = totalNumKeys / numServers;
 
         generatedKeysByServer = new ArrayList<ArrayList<ByteBuffer>>(numServers);
-        for (int i = 0; i < numServers; i++)
-        {
+        for (int i = 0; i < numServers; i++) {
             generatedKeysByServer.add(new ArrayList<ByteBuffer>(keysPerServer));
         }
 
@@ -878,11 +949,14 @@ public class Session implements Serializable
         boolean allServersFull;
         Random randomizer = new Random();
         do {
-            String randKeyStr = String.format("%0" + (getTotalKeysLength()) + "d", randomizer.nextInt(10*(getNumDifferentKeys() - 1)));
+            String randKeyStr = String
+                    .format("%0" + (getTotalKeysLength()) + "d", randomizer
+                            .nextInt(10 * (getNumDifferentKeys() - 1)));
             ByteBuffer randKey = ByteBuffer.wrap(randKeyStr.getBytes(UTF_8));
-            double hashedRandKey = FBUtilities.hashToBigInteger(randKey).doubleValue();
+            double hashedRandKey = FBUtilities.hashToBigInteger(randKey)
+                    .doubleValue();
 
-            //Cassandra's keyspace is [0, 2**127)
+            // Cassandra's keyspace is [0, 2**127)
             double keyrangeSize = Math.pow(2, 127) / numServers;
             int serverIndex = (int) (hashedRandKey / keyrangeSize);
             if (generatedKeysByServer.get(serverIndex).size() < keysPerServer) {
@@ -891,7 +965,8 @@ public class Session implements Serializable
 
             allServersFull = true;
             for (int i = 0; i < numServers; i++) {
-                //System.out.println("Server " + i + " has " + generatedKeysByServer.get(i).size() + " keys");
+                // System.out.println("Server " + i + " has " +
+                // generatedKeysByServer.get(i).size() + " keys");
                 if (generatedKeysByServer.get(i).size() < keysPerServer) {
                     allServersFull = false;
                     break;
@@ -900,85 +975,75 @@ public class Session implements Serializable
         } while (!allServersFull);
     }
 
-    private void dynamicOneServerGenerateKeysForEachServer(int numServers, int numPopulatedKeys)
-    {
+    private void dynamicOneServerGenerateKeysForEachServer(int numServers,
+            int numPopulatedKeys) {
         generatedKeysByServer = new ArrayList<ArrayList<ByteBuffer>>(numServers);
-        for (int i = 0; i < numServers; i++)
-        {
+        for (int i = 0; i < numServers; i++) {
             generatedKeysByServer.add(new ArrayList<ByteBuffer>());
         }
 
         // Assuming we're using the random partitioner, which we are.
         // We need to generate keys for servers by randomly generating keys
         // and then matching them to whatever their md5 maps to.
-        for (int keyI = 0; keyI < numPopulatedKeys; keyI++)
-        {
-            String keyStr = String.format("%0" + (getTotalKeysLength()) + "d", keyI);
+        for (int keyI = 0; keyI < numPopulatedKeys; keyI++) {
+            String keyStr = String.format("%0" + (getTotalKeysLength()) + "d",
+                    keyI);
             ByteBuffer key = ByteBuffer.wrap(keyStr.getBytes(UTF_8));
             double hashedKey = FBUtilities.hashToBigInteger(key).doubleValue();
 
-            //Cassandra's keyspace is [0, 2**127)
+            // Cassandra's keyspace is [0, 2**127)
             double keyrangeSize = Math.pow(2, 127) / numServers;
             int serverIndex = (int) (hashedKey / keyrangeSize);
             generatedKeysByServer.get(serverIndex).add(key);
         }
     }
 
-
-
     /**
      * Thrift client connection with Keyspace1 set.
+     * 
      * @return cassandra client connection
      */
-    public Cassandra.Client getClient()
-    {
+    public Cassandra.Client getClient() {
         return getClient(true);
     }
+
     /**
      * Thrift client connection
-     * @param setKeyspace - should we set keyspace for client or not
+     * 
+     * @param setKeyspace
+     *            - should we set keyspace for client or not
      * @return cassandra client connection
      */
-    public Cassandra.Client getClient(boolean setKeyspace)
-    {
+    public Cassandra.Client getClient(boolean setKeyspace) {
         // random node selection for fake load balancing
         String currentNode = nodes[Stress.randomizer.nextInt(nodes.length)];
 
         TSocket socket = new TSocket(currentNode, port);
-        TTransport transport = (isUnframed()) ? socket : new TFramedTransport(socket);
-        Cassandra.Client client = new Cassandra.Client(new TBinaryProtocol(transport));
+        TTransport transport = (isUnframed()) ? socket : new TFramedTransport(
+                socket);
+        Cassandra.Client client = new Cassandra.Client(new TBinaryProtocol(
+                transport));
 
-        try
-        {
+        try {
             transport.open();
 
-            if (setKeyspace)
-            {
+            if (setKeyspace) {
                 client.set_keyspace("Keyspace1", LamportClock.sendTimestamp());
             }
-        }
-        catch (InvalidRequestException e)
-        {
+        } catch (InvalidRequestException e) {
             throw new RuntimeException(e.getWhy());
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }
 
         return client;
     }
 
-    public static InetAddress getLocalAddress()
-    {
-        if (localInetAddress == null)
-        {
-            try
-            {
+    public static InetAddress getLocalAddress() {
+        if (localInetAddress == null) {
+            try {
                 localInetAddress = InetAddress.getLocalHost();
-            }
-            catch (UnknownHostException e)
-            {
+            } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
         }
