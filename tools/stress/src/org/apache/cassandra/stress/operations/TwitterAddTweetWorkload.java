@@ -20,11 +20,11 @@ import org.apache.cassandra.thrift.SlicePredicate;
 import org.apache.cassandra.thrift.SliceRange;
 import org.apache.cassandra.utils.FBUtilities;
 
-public class TwitterWorkload extends Operation {
+public class TwitterAddTweetWorkload extends Operation {
     private static final int kNumFollowers = 20;
     private static Random rand = new Random();
 
-    public TwitterWorkload(Session session, int index) {
+    public TwitterAddTweetWorkload(Session session, int index) {
         super(session, index);
     }
 
@@ -42,7 +42,7 @@ public class TwitterWorkload extends Operation {
         ByteBuffer me = ByteBuffer.wrap(String.format("user-%09d",
                 rand.nextInt(session.getNumTotalKeys())).getBytes());
 
-//        System.out.println("ME: " + new String(me.array()));
+        // System.out.println("ME: " + new String(me.array()));
         ColumnParent parent = new ColumnParent("Followers");
         List<ColumnOrSuperColumn> friends = null;
 
@@ -51,6 +51,8 @@ public class TwitterWorkload extends Operation {
         sliceRange.setStart(new byte[0]);
         sliceRange.setFinish(new byte[0]);
         predicate.setSlice_range(sliceRange);
+
+        long start = System.currentTimeMillis();
 
         for (int t = 0; t < session.getRetryTimes(); t++) {
             try {
@@ -100,10 +102,8 @@ public class TwitterWorkload extends Operation {
             tweets.put("Tweets", tweetMutation);
             updates.put(me, tweets);
 
-//            System.out.println("Tweet mutation:" + m.toString());
+            // System.out.println("Tweet mutation:" + m.toString());
         }
-
-        long start = System.currentTimeMillis();
 
         boolean success = false;
         String exceptionMessage = null;

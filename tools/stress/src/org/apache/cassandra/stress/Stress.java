@@ -43,7 +43,8 @@ public final class Stress {
         TWO_ROUND_READ_TXN,
         DYNAMIC_ONE_SERVER,
         TWITTER_POPULATE,
-        TWITTER_WORKLOAD
+        TWITTER_ADD_TWEET_WORKLOAD,
+        TWITTER_READ_TIMELINE_WORKLOAD,
     }
 
     public static Session session;

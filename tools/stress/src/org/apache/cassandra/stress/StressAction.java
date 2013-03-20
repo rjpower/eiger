@@ -247,7 +247,7 @@ public class StressAction extends Thread {
                     || client.getOperation() == Stress.Operations.FACEBOOK
                     || client.getOperation() == Stress.Operations.FACEBOOK_POPULATE
                     || client.getOperation() == Stress.Operations.TWITTER_POPULATE
-                    || client.getOperation() == Stress.Operations.TWITTER_WORKLOAD
+                    || client.getOperation() == Stress.Operations.TWITTER_ADD_TWEET_WORKLOAD
                     || client.getOperation() == Stress.Operations.WRITE_TXN
                     || client.getOperation() == Stress.Operations.BATCH_MUTATE
                     || client.getOperation() == Stress.Operations.TWO_ROUND_READ_TXN
@@ -378,10 +378,10 @@ public class StressAction extends Thread {
                 throw new RuntimeException("CQL not support with this workload");
             return new TwitterPopulator(client, index);
 
-        case TWITTER_WORKLOAD:
+        case TWITTER_ADD_TWEET_WORKLOAD:
             if (client.isCQL())
                 throw new RuntimeException("CQL not support with this workload");
-            return new TwitterWorkload(client, index);
+            return new TwitterAddTweetWorkload(client, index);
         }
 
         throw new UnsupportedOperationException();
