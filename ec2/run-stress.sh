@@ -12,11 +12,10 @@ TOTAL=$(cat ec2-info* | grep $SERVER_TAG | wc -l)
 
 echo My offset: $OFFSET, total client: $TOTAL
 
-exit
-
 DIRNAME=$(readlink -f .)
 rsync -e 'ssh -oStrictHostKeyChecking=no' -aip nfs.rjpower.org:$DIRNAME /tmp/
 (
   cd /tmp/eiger/tools/stress/
+  ant
   bin/stress --nodes=localhost --stress-index=$OFFSET --stress-count=$TOTAL $*
 )
