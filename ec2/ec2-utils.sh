@@ -4,7 +4,7 @@ REGIONS="us-east-1 us-west-1 ap-southeast-1 eu-west-1"
 SERVER_TAG="eiger-server"
 
 function abort() {
-  echo "ABORT: $1 $2 $3 $4 $5" 1>@2
+  echo "ABORT: $1 $2 $3 $4 $5" 1>&2
   exit 1
 } 
 
