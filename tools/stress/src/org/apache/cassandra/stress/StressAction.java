@@ -215,8 +215,7 @@ public class StressAction extends Thread {
                     break;
 
                 try {
-                    operations.put(createOperation((i % client
-                            .getNumDifferentKeys()) + client.getKeysOffset()));
+                    operations.put(createOperation((i % client.getNumDifferentKeys()) + client.getKeysOffset()));
                 } catch (InterruptedException e) {
                     System.err.println("Producer error - " + e.getMessage());
                     return;
@@ -248,6 +247,7 @@ public class StressAction extends Thread {
                     || client.getOperation() == Stress.Operations.FACEBOOK_POPULATE
                     || client.getOperation() == Stress.Operations.TWITTER_POPULATE
                     || client.getOperation() == Stress.Operations.TWITTER_ADD_TWEET_WORKLOAD
+                    || client.getOperation() == Stress.Operations.TWITTER_READ_TIMELINE_WORKLOAD
                     || client.getOperation() == Stress.Operations.WRITE_TXN
                     || client.getOperation() == Stress.Operations.BATCH_MUTATE
                     || client.getOperation() == Stress.Operations.TWO_ROUND_READ_TXN
@@ -382,6 +382,11 @@ public class StressAction extends Thread {
             if (client.isCQL())
                 throw new RuntimeException("CQL not support with this workload");
             return new TwitterAddTweetWorkload(client, index);
+
+        case TWITTER_READ_TIMELINE_WORKLOAD:
+            if (client.isCQL())
+                throw new RuntimeException("CQL not support with this workload");
+            return new TwitterReadTimeline(client, index);
         }
 
         throw new UnsupportedOperationException();
