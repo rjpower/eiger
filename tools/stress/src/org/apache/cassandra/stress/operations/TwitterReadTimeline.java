@@ -51,6 +51,7 @@ public class TwitterReadTimeline extends Operation {
         sliceRange.setFinish(new byte[0]);
         predicate.setSlice_range(sliceRange);
 
+        long startNano = System.nanoTime();
         long start = System.currentTimeMillis();
 
         for (int t = 0; t < session.getRetryTimes(); t++) {
@@ -66,5 +67,8 @@ public class TwitterReadTimeline extends Operation {
         session.columnCount.getAndAdd(kNumFollowers);
         session.bytes.getAndAdd(100);
         session.latency.getAndAdd(System.currentTimeMillis() - start);
+        long latencyNano = System.nanoTime() - startNano;
+        session.latency.getAndAdd(latencyNano/1000000);
+        session.latencies.add(latencyNano/1000);
     }
 }
