@@ -1,5 +1,1 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
 # Cassandra Node IP=Data Center:Rack
-127.0.0.1=DC1:RAC1
-default=DC1:RAC1
