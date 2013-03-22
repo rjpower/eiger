@@ -8,7 +8,7 @@ for r in $REGIONS; do
 done
 wait
 
-DC=1
+DC=0
 for r in $REGIONS; do  
   grep $SERVER_TAG ./ec2-info.$r | awk "{print \$3\"=DC$DC:RAC1\"; print \$4\"=DC$DC:RAC1\"}" >> conf/cassandra-topology.properties
   DC=$((DC + 1))

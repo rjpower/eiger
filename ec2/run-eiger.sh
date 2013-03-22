@@ -16,7 +16,7 @@ TOKEN=
 
 # we need to set our initial_token, because cassandra is borked.
 # find the datacenter we belong to
-for dc in $(seq 10); do 
+for dc in $(seq 0 10); do 
   if (cat conf/cassandra-topology.properties | grep "DC$dc" | grep $PUBLIC); then
     # what offset are we at in our datacenter?
     offset=$(cat conf/cassandra-topology.properties | grep "DC$dc" | egrep -v '^10.' | grep -n $PUBLIC | awk -F: '{print $1}')
@@ -36,6 +36,7 @@ done
 
 echo "Blowing away database...."
 rm -rf /tmp/cassandra
+rm -rf /mnt/cassandra
 
 echo Public ip: $PUBLIC, private ip: $PRIVATE, seed: $SEED
 echo Seed line: $SEEDS
