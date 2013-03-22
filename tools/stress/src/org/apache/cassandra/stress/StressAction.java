@@ -68,7 +68,7 @@ public class StressAction extends Thread {
         int threadCount = client.getThreads();
         Consumer[] consumers = new Consumer[threadCount];
 
-        output.println("total,interval_op_rate,interval_key_rate,avg_latency,last_latency,elapsed_time");
+        output.println("total,interval_op_rate,interval_key_rate,interval_byte_rate,avg_latency,last_latency,elapsed_time");
 
         int itemsPerThread = client.getKeysPerThread();
         int modulo = client.getNumKeys() % threadCount;
@@ -158,9 +158,9 @@ public class StressAction extends Thread {
                         .toString(latencyDelta / (opDelta * 1000)) : "NaN";
 
                 output.println(String.format("%d,%d,%d,%d,%d,%s,%f,%d", total,
-                        opDelta / interval, keyDelta / interval, columnDelta
+                                opDelta / interval, keyDelta / interval, columnDelta
                                 / interval, byteDelta / interval,
-                        formattedDelta, lastLatency / 1e9, currentTimeInSeconds));
+                                formattedDelta, lastLatency / 1e9, currentTimeInSeconds));
             }
         }
 
