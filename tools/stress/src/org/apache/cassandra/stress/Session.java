@@ -58,6 +58,7 @@ public class Session implements Serializable {
     public final AtomicInteger columnCount;
     public final AtomicLong bytes;
     public final AtomicLong latency;
+    public final AtomicLong lastLatency;
     public final ConcurrentLinkedQueue<Long> latencies;
 
     static {
@@ -656,6 +657,7 @@ public class Session implements Serializable {
         columnCount = new AtomicInteger();
         bytes = new AtomicLong();
         latency = new AtomicLong();
+        lastLatency = new AtomicLong();
         latencies = new ConcurrentLinkedQueue<Long>();
     }
 

@@ -68,6 +68,7 @@ public class TwitterReadTimeline extends Operation {
         session.bytes.getAndAdd(100);
         session.latency.getAndAdd(System.currentTimeMillis() - start);
         long latencyNano = System.nanoTime() - startNano;
+        session.lastLatency.set(latencyNano);
         session.latency.getAndAdd(latencyNano/1000000);
         session.latencies.add(latencyNano/1000);
     }
