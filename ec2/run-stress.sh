@@ -5,8 +5,10 @@ source $(dirname $0)/ec2-utils.sh
 PUBLIC=$(wget -qO- http://instance-data/latest/meta-data/public-ipv4)
 PRIVATE=$(wget -qO- http://instance-data/latest/meta-data/local-ipv4)
 
-OFFSET=$(cat ec2-info* | grep $SERVER_TAG | grep -n $PUBLIC | awk -F: '{print $1}')
-OFFSET=$((OFFSET - 1))
+#OFFSET=$(cat ec2-info* | grep $SERVER_TAG | grep -n $PUBLIC | awk -F: '{print $1}')
+#OFFSET=$((OFFSET - 1))
+
+OFFSET=0
 
 TOTAL=$(cat ec2-info* | grep $SERVER_TAG | wc -l)
 
@@ -42,13 +44,13 @@ DIRNAME=$(readlink -f .)
 rsync -e 'ssh -oStrictHostKeyChecking=no' -aip nfs.rjpower.org:$DIRNAME /tmp/
 (
   cd /tmp/eiger/tools/stress/
-  #ant
   set -x
   bin/stress \
   --nodes=$DC_NODES \
   --stress-index=$OFFSET \
   --stress-count=$TOTAL \
   --replication-strategy=NetworkTopologyStrategy \
+  --consistency-level=LOCAL_QUORUM \
   --strategy-properties=$strategy_properties \
   $*
 )
